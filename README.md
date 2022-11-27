@@ -172,8 +172,9 @@ POST /api/customer/{customer_id}/transaction
 
 ---
 ### Edit Customer's Transaction
-This process will create rollback transaction and create new updated transaction 
 ---
+This process will create rollback transaction and create new updated transaction 
+
 #### Endpoint :
 ```http
 PUT /api/customer/{customer_id}/transaction/{transaction_id}
@@ -206,8 +207,9 @@ PUT /api/customer/{customer_id}/transaction/{transaction_id}
 
 ---
 ### Delete Customer's Transaction
-This process will create rollback transaction and not actually delete the transaction
 ---
+This process will create rollback transaction and not actually delete the transaction
+
 #### Endpoint :
 ```http
 DELETE /api/customer/{customer_id}/transaction/{transaction_id}
