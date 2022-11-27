@@ -50,6 +50,7 @@ GET /api/customer/{customer_id}/transaction
 ```
 <br/>
 
+---
 ### Get Customer's Transaction Data Count
 ---
 #### Endpoint :
