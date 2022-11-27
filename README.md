@@ -209,7 +209,7 @@ This process will create rollback transaction and not actually delete the transa
 ---
 #### Endpoint :
 ```http
-Delete /api/customer/{customer_id}/transaction/{transaction_id}
+DELETE /api/customer/{customer_id}/transaction/{transaction_id}
 ```
 
 #### Response :
@@ -262,4 +262,5 @@ The `data` attribute contains any other metadata associated with the response. T
 | 400 | `BAD REQUEST` |
 | 404 | `NOT FOUND` |
 | 500 | `INTERNAL SERVER ERROR` |
+
 <br/><br/>
