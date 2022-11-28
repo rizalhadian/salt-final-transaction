@@ -52,6 +52,10 @@ func NewTransactionsItem(dto DTOTransactionsItem) (*TransactionsItem, error) {
 		return nil, errors.New("Transaction_id is required")
 	}
 
+	if dto.Item_id == 0 {
+		return nil, errors.New("Item_id is required")
+	}
+
 	if dto.Items_type_id == 0 {
 		return nil, errors.New("Items_type_id is required")
 	}
@@ -65,44 +69,17 @@ func NewTransactionsItem(dto DTOTransactionsItem) (*TransactionsItem, error) {
 		if dto.Customers_voucher_id.Int64 == 0 {
 			return nil, errors.New("If Customers_voucher_id not null, Customers_voucher_id cannot be 0")
 		}
-		if dto.Voucher_id.Valid == false {
-			return nil, errors.New("If Customers_voucher_id not null, Voucher_id cannot be null")
-		}
-		if dto.Voucher_id.Int64 == 0 {
-			return nil, errors.New("If Customers_voucher_id not null, Voucher_id cannot be 0")
-		}
-		if dto.Voucher_code == "" {
-			return nil, errors.New("If Customers_voucher_id not null, Voucher_code cannot be blank")
-		}
 	}
 
 	if dto.Voucher_id.Valid == true {
 		if dto.Voucher_id.Int64 == 0 {
 			return nil, errors.New("If Voucher_id not null, Voucher_id cannot be 0")
 		}
-		if dto.Customers_voucher_id.Valid == false {
-			return nil, errors.New("If Voucher_id not null, Customers_voucher_id cannot be null")
-		}
-		if dto.Customers_voucher_id.Int64 == 0 {
-			return nil, errors.New("If Voucher_id not null, Customers_voucher_id cannot be 0")
-		}
-		if dto.Voucher_code == "" {
-			return nil, errors.New("If Voucher_id not null, Voucher_code cannot be blank")
-		}
 	}
 
-	if dto.Voucher_code == "" {
-		if dto.Voucher_id.Valid == false {
-			return nil, errors.New("If Voucher_code not blank, Voucher_id cannot be null")
-		}
-		if dto.Voucher_id.Int64 == 0 {
-			return nil, errors.New("If Voucher_code not blank, Voucher_id cannot be 0")
-		}
-		if dto.Customers_voucher_id.Valid == false {
-			return nil, errors.New("If Voucher_code not blank, Customers_voucher_id cannot be null")
-		}
-		if dto.Customers_voucher_id.Int64 == 0 {
-			return nil, errors.New("If Voucher_code not blank, Customers_voucher_id cannot be 0")
+	if dto.Customers_voucher_id.Valid == true || dto.Voucher_id.Valid == true || dto.Voucher_code != "" {
+		if !(dto.Customers_voucher_id.Valid == true && dto.Voucher_id.Valid == true && dto.Voucher_code != "") {
+			return nil, errors.New("If Voucher is used, Customers_voucher_id, Voucher_id, and Voucher_code is required")
 		}
 	}
 
@@ -127,7 +104,6 @@ func NewTransactionsItem(dto DTOTransactionsItem) (*TransactionsItem, error) {
 	}
 
 	return transactions_item, nil
-
 }
 
 // Transaction's Item Getter

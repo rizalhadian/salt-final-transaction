@@ -17,29 +17,21 @@ func Test_NewTransaction_Negative(t *testing.T) {
 		expected_error error
 	}
 
-	test_dto_transactions_positive := []test_data_transaction_struct{
+	test_dto_transactions := []test_data_transaction_struct{
 		test_data_transaction_struct{
 			request: entity.DTOTransaction{
-				Id:                    1,
-				Customer_id:           0,
-				Total_amount:          100000.0,
-				Total_discount_amount: 0.0,
-				Final_total_amount:    100000.0,
-				Note:                  "",
-				Status:                0,
-				Rollback_transaction_id: sql.NullInt64{
-					Valid: false,
-				},
-				Update_transaction_id: sql.NullInt64{
-					Valid: false,
-				},
-				Created_at: time.Now(),
-				Updated_at: sql.NullTime{
-					Valid: false,
-				},
-				Deleted_at: sql.NullTime{
-					Valid: false,
-				},
+				Id:                           1,
+				Customer_id:                  0,
+				Total_amount:                 100000.0,
+				Total_discount_amount:        0.0,
+				Final_total_amount:           100000.0,
+				Note:                         "",
+				Status:                       0,
+				Rollback_transaction_id:      sql.NullInt64{Valid: false},
+				Update_transaction_id:        sql.NullInt64{Valid: false},
+				Created_at:                   time.Now(),
+				Updated_at:                   sql.NullTime{Valid: false},
+				Deleted_at:                   sql.NullTime{Valid: false},
 				Is_generated_voucher_succeed: true,
 			},
 			expected_error: errors.New("Status is required"),
@@ -74,10 +66,10 @@ func Test_NewTransaction_Negative(t *testing.T) {
 		// },
 	}
 
-	for _, test_dto_transaction_positive := range test_dto_transactions_positive {
-		data, err := entity.NewTransaction(test_dto_transaction_positive.request)
+	for _, test_dto_transaction := range test_dto_transactions {
+		data, err := entity.NewTransaction(test_dto_transaction.request)
 		assert.NotNil(t, err)
-		assert.Equal(t, test_dto_transaction_positive.expected_error, err)
+		assert.Equal(t, test_dto_transaction.expected_error, err)
 		assert.Nil(t, data)
 	}
 }
