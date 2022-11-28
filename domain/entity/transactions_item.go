@@ -46,7 +46,7 @@ type DTOTransactionsItem struct {
 	Deleted_at           sql.NullTime
 }
 
-func NewTransaction(dto DTOTransactionsItem) (*TransactionsItem, error) {
+func NewTransactionsItem(dto DTOTransactionsItem) (*TransactionsItem, error) {
 
 	if dto.Transaction_id == 0 {
 		return nil, errors.New("Transaction_id is required")
@@ -54,6 +54,56 @@ func NewTransaction(dto DTOTransactionsItem) (*TransactionsItem, error) {
 
 	if dto.Items_type_id == 0 {
 		return nil, errors.New("Items_type_id is required")
+	}
+
+	// This validation should be on usecase
+	// if dto.Total_price != (dto.Price * float64(dto.Qty)) {
+	// 	return nil, errors.New("Total_price is incorrect")
+	// }
+
+	if dto.Customers_voucher_id.Valid == true {
+		if dto.Customers_voucher_id.Int64 == 0 {
+			return nil, errors.New("If Customers_voucher_id not null, Customers_voucher_id cannot be 0")
+		}
+		if dto.Voucher_id.Valid == false {
+			return nil, errors.New("If Customers_voucher_id not null, Voucher_id cannot be null")
+		}
+		if dto.Voucher_id.Int64 == 0 {
+			return nil, errors.New("If Customers_voucher_id not null, Voucher_id cannot be 0")
+		}
+		if dto.Voucher_code == "" {
+			return nil, errors.New("If Customers_voucher_id not null, Voucher_code cannot be blank")
+		}
+	}
+
+	if dto.Voucher_id.Valid == true {
+		if dto.Voucher_id.Int64 == 0 {
+			return nil, errors.New("If Voucher_id not null, Voucher_id cannot be 0")
+		}
+		if dto.Customers_voucher_id.Valid == false {
+			return nil, errors.New("If Voucher_id not null, Customers_voucher_id cannot be null")
+		}
+		if dto.Customers_voucher_id.Int64 == 0 {
+			return nil, errors.New("If Voucher_id not null, Customers_voucher_id cannot be 0")
+		}
+		if dto.Voucher_code == "" {
+			return nil, errors.New("If Voucher_id not null, Voucher_code cannot be blank")
+		}
+	}
+
+	if dto.Voucher_code == "" {
+		if dto.Voucher_id.Valid == false {
+			return nil, errors.New("If Voucher_code not blank, Voucher_id cannot be null")
+		}
+		if dto.Voucher_id.Int64 == 0 {
+			return nil, errors.New("If Voucher_code not blank, Voucher_id cannot be 0")
+		}
+		if dto.Customers_voucher_id.Valid == false {
+			return nil, errors.New("If Voucher_code not blank, Customers_voucher_id cannot be null")
+		}
+		if dto.Customers_voucher_id.Int64 == 0 {
+			return nil, errors.New("If Voucher_code not blank, Customers_voucher_id cannot be 0")
+		}
 	}
 
 	transactions_item := &TransactionsItem{

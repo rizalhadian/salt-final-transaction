@@ -44,6 +44,11 @@ func NewTransaction(dto DTOTransaction) (*Transaction, error) {
 		return nil, errors.New("Status is required")
 	}
 
+	// This validation should be on usecase
+	// if dto.Final_total_amount != (dto.Total_amount - dto.Total_discount_amount) {
+	// 	return nil, errors.New("Final_total_amount is incorrect")
+	// }
+
 	transaction := &Transaction{
 		id:                           dto.Id,
 		customer_id:                  dto.Customer_id,
