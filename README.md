@@ -145,10 +145,9 @@ GET /api/customer/{customer_id}/transaction/{transaction_id}
 POST /api/customer/{customer_id}/transaction
 ```
 
-#### Response :
+#### Request :
 ```javascript
 {
-    "id"                          : integer,
     "note"                        : string,
     "items"                       : [
         {
@@ -166,6 +165,14 @@ POST /api/customer/{customer_id}/transaction
             "voucher_code"                  : string,
         },
     ],
+    "voucher" : [
+        {
+            "voucher_code"                  : string,
+        },
+        {
+            "voucher_code"                  : string,
+        },
+    ]
 }
 ```
 <br/>
@@ -180,10 +187,9 @@ This process will create rollback transaction and create new updated transaction
 PUT /api/customer/{customer_id}/transaction/{transaction_id}
 ```
 
-#### Response :
+#### Request :
 ```javascript
 {
-    "id"                          : integer,
     "note"                        : string,
     "items"                       : [
         {
@@ -213,30 +219,6 @@ This process will create rollback transaction and not actually delete the transa
 #### Endpoint :
 ```http
 DELETE /api/customer/{customer_id}/transaction/{transaction_id}
-```
-
-#### Response :
-```javascript
-{
-    "id"                          : integer,
-    "note"                        : string,
-    "items"                       : [
-        {
-            "items_type_id"                 : integer,
-            "item_id"                       : integer,
-            "qty"                           : integer,
-            "note"                          : string,
-            "voucher_code"                  : string,
-        },
-        {
-            "items_type_id"                 : integer,
-            "item_id"                       : integer,
-            "qty"                           : integer,
-            "note"                          : string,
-            "voucher_code"                  : string,
-        },
-    ],
-}
 ```
 <br/>
 

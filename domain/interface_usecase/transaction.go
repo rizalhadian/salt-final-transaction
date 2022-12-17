@@ -6,9 +6,10 @@ import (
 )
 
 type InterfaceUsecaseTransaction interface {
-	Store(ctx context.Context, a *entity.Transaction) (id int64, errs error)
-	Update(ctx context.Context, a *entity.Transaction) error
-	Delete(ctx context.Context, id int64) error
-	GetById(ctx context.Context, id int64) (*entity.Transaction, error)
+	Store(ctx context.Context, dto_transaction *entity.DTOTransaction) (id int64, errs error)
+	Update(ctx context.Context, dto_transaction *entity.DTOTransaction) error
+	Delete(ctx context.Context, customer_id int64, id int64) error
+	GetById(ctx context.Context, customer_id int64, id int64) (*entity.Transaction, error)
+	GetByCustomerIdList(ctx context.Context, customer_id int64, page int32) (res []*entity.Transaction, err error)
 	GetList(ctx context.Context, page int32) (res []*entity.Transaction, err error)
 }
