@@ -16,7 +16,6 @@ import (
 func Test_Transaction_Store_Positive(t *testing.T) {
 
 	ctx := context.Background()
-
 	dto_transaction := &entity.DTOTransaction{
 		Customer_id:                  1,
 		Total_amount:                 0,
@@ -24,7 +23,6 @@ func Test_Transaction_Store_Positive(t *testing.T) {
 		Final_total_amount:           0,
 		Note:                         "",
 		Status:                       112,
-		Created_at:                   time.Now(),
 		Is_generated_voucher_succeed: false,
 	}
 
@@ -40,6 +38,7 @@ func Test_Transaction_Store_Positive(t *testing.T) {
 
 	repo_err := repoTransaction.Store(ctx, entity_transaction)
 	assert.NotZero(t, entity_transaction.GetId())
+	assert.Nil(t, repo_err)
 	assert.Nil(t, repo_err)
 }
 

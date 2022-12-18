@@ -12,6 +12,7 @@ type ModelItem struct {
 	Description   string       `dbq:"description"`
 	Price         float64      `dbq:"price"`
 	Stock         int32        `dbq:"stock"`
+	Is_service    bool         `dbq:"is_service"`
 	Status        int32        `dbq:"status"`
 	Created_at    time.Time    `dbq:"created_at"`
 	Updated_at    sql.NullTime `dbq:"updated_at"`
@@ -35,6 +36,7 @@ func (ModelItem) GetFieldsNeededToGetProcess() []string {
 		"description",
 		"price",
 		"stock",
+		"is_service",
 		"status",
 		"created_at",
 		"updated_at",

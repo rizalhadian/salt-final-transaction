@@ -30,6 +30,49 @@ type TransactionsItemResponse struct {
 	Created_at    time.Time `json:"created_at"`
 }
 
+func MapTransactionsListResponse(entity_transactions []*entity.Transaction) []*TransactionResponse {
+
+	var transactions_response_list []*TransactionResponse
+
+	for _, entity_transaction := range entity_transactions {
+
+		var transaction_items []*TransactionsItemResponse
+
+		for _, entity_transactions_item := range entity_transaction.GetItems() {
+			transaction_item := TransactionsItemResponse{
+				Id:            entity_transactions_item.GetId(),
+				Item_id:       entity_transactions_item.GetItemId(),
+				Items_type_id: entity_transactions_item.GetItemsTypeId(),
+				Price:         entity_transactions_item.GetTotalPrice(),
+				Qty:           entity_transactions_item.GetQty(),
+				Total_price:   entity_transactions_item.GetTotalPrice(),
+				Note:          entity_transactions_item.GetNote(),
+				Created_at:    entity_transactions_item.GetCreatedAt(),
+			}
+
+			transaction_items = append(transaction_items, &transaction_item)
+		}
+
+		transaction_response := &TransactionResponse{
+			Id:                      entity_transaction.GetId(),
+			Customer_id:             entity_transaction.GetCustomerId(),
+			Total_amount:            entity_transaction.GetTotalAmount(),
+			Total_discount_amount:   entity_transaction.GetTotalDiscountAmount(),
+			Final_total_amount:      entity_transaction.GetFinalTotalAmount(),
+			Note:                    entity_transaction.GetNote(),
+			Status:                  entity_transaction.GetStatus(),
+			Rollback_transaction_id: entity_transaction.GetRollbackTransactionId(),
+			Items:                   transaction_items,
+			Update_transaction_id:   entity_transaction.GetUpdateTransactionId(),
+			Created_at:              entity_transaction.GetCreatedAt(),
+		}
+
+		transactions_response_list = append(transactions_response_list, transaction_response)
+	}
+
+	return transactions_response_list
+}
+
 func MapTransactionResponse(entity_transaction *entity.Transaction) *TransactionResponse {
 
 	var transaction_items []*TransactionsItemResponse

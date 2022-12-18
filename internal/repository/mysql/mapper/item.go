@@ -13,6 +13,7 @@ func ItemModelToEntity(model_item *model.ModelItem) *entity.Item {
 	entity_item.SetDescription(model_item.Description)
 	entity_item.SetPrice(model_item.Price)
 	entity_item.SetStock(model_item.Stock)
+	entity_item.SetIsService(model_item.Is_service)
 	entity_item.SetStatus(int16(model_item.Status))
 	return entity_item
 }

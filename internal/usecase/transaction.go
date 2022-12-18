@@ -42,7 +42,7 @@ func NewUsecaseTransaction(interfaceInfraCustomer interface_infrastructure_custo
 	}
 }
 
-func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity.DTOTransaction) (id int64, errs error) {
+func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity.DTOTransaction) (transaction *entity.Transaction, errs error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
@@ -52,22 +52,22 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 	if dto_transaction.Customer_id > 0 {
 		_, infra_cust_err := ut.infraCustomer.GetById(ctx, dto_transaction.Customer_id)
 		if infra_cust_err.Error() == "404" {
-			return 0, errors.New("404")
+			return nil, errors.New("404")
 		}
 		if infra_cust_err != nil {
 			log.Error().Msg("Transaction=>Infrastructure=>Customer : " + infra_cust_err.Error())
-			return 0, errors.New("500")
+			return nil, errors.New("500")
 		}
 	}
 	// <<< Infrastructure Check Customer By Id
 
 	if len(dto_transaction.Items) == 0 {
-		return 0, errors.New("Transaction's Items is required")
+		return nil, errors.New("Transaction's Items is required")
 	}
 
 	entity_transaction, err_entity_transaction := entity.NewTransaction(dto_transaction)
 	if err_entity_transaction != nil {
-		return 0, err_entity_transaction
+		return nil, err_entity_transaction
 	}
 
 	// >>> Check Transaction's Item
@@ -78,7 +78,7 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 		// >>> Create Entity And Validate
 		entity_transactions_item, entity_transactions_item_err := entity.NewTransactionsItem(dto_transactions_item)
 		if entity_transactions_item_err != nil {
-			return 0, entity_transactions_item_err
+			return nil, entity_transactions_item_err
 		}
 		// <<< Create Entity And Validate
 
@@ -88,21 +88,21 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 		if repo_item_err != nil {
 			if repo_item_err.Error() == "404" {
 				log.Error().Msg("Transaction=>Repository=>Item : " + repo_item_err.Error())
-				return 0, errors.New("400")
+				return nil, errors.New("Item Not Found")
 			}
 
 			log.Error().Msg("Transaction=>Repository=>Item : " + repo_item_err.Error())
-			return 0, errors.New("500")
+			return nil, errors.New("500")
 		}
 
-		if item.GetStock() < dto_transactions_item.Qty {
-			return 0, errors.New("Insufficient Stock")
+		if item.GetIsService() == false && item.GetStock() < dto_transactions_item.Qty {
+			return nil, errors.New("Insufficient Stock")
 		}
 		if item.GetPrice() != dto_transactions_item.Price {
-			return 0, errors.New("Price Changed")
+			return nil, errors.New("Price Changed")
 		}
 		if item.GetItemsTypeId() != dto_transactions_item.Items_type_id {
-			return 0, errors.New("Items Type Id Is Not Match")
+			return nil, errors.New("Items Type Id Is Not Match")
 		}
 		// <<< Check Repo Item
 		total_items_amount += entity_transactions_item.GetTotalPrice()
@@ -144,25 +144,26 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 	repo_transaction_err := ut.repoTransaction.Store(ctx, entity_transaction)
 	if repo_transaction_err != nil {
 		log.Error().Msg(repo_transaction_err.Error())
-		return 0, repo_transaction_err
+		return nil, repo_transaction_err
 	}
 
 	repo_transactions_items_err := ut.repoTransactionsItem.Store(ctx, entity_transaction.GetId(), entity_transactions_items)
 	if repo_transactions_items_err != nil {
 		log.Error().Msg(repo_transactions_items_err.Error())
-		return 0, repo_transactions_items_err
+		return nil, repo_transactions_items_err
 	}
 
 	entity_transaction.SetStatus(111)
 	entity_transaction.SetTotalAmount(total_items_amount)
+	entity_transaction.SetItems(entity_transactions_items)
 	entity_transaction.SetTotalDiscountAmount(0)
 	repo_transaction_update_err := ut.repoTransaction.Update(ctx, entity_transaction)
 	if repo_transaction_update_err != nil {
-		return 0, repo_transaction_update_err
+		return nil, repo_transaction_update_err
 	}
 	// <<<< Repository Store
 
-	return 0, nil
+	return entity_transaction, nil
 }
 
 func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entity.DTOTransaction) error {
@@ -211,14 +212,14 @@ func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entit
 		if repo_item_err != nil {
 			if repo_item_err.Error() == "404" {
 				log.Error().Msg("Transaction=>Repository=>Item : " + repo_item_err.Error())
-				return errors.New("400")
+				return errors.New("Item Not Found")
 			}
 
 			log.Error().Msg("Transaction=>Repository=>Item : " + repo_item_err.Error())
 			return errors.New("500")
 		}
 
-		if item.GetStock() < dto_transactions_item.Qty {
+		if item.GetIsService() == false && item.GetStock() < dto_transactions_item.Qty {
 			return errors.New("Insufficient Stock")
 		}
 		if item.GetPrice() != dto_transactions_item.Price {
@@ -263,6 +264,15 @@ func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entit
 	// >>> Repository Store
 	old_transaction_id := entity_transaction.GetId()
 
+	entity_rollback_transaction, entity_rollback_transaction_err := ut.repoTransaction.GetById(ctx, old_transaction_id)
+	if entity_rollback_transaction_err != nil {
+		return entity_rollback_transaction_err
+	}
+
+	if entity_rollback_transaction.GetStatus() != 114 && entity_rollback_transaction.GetStatus() != 111 {
+		return errors.New("Update Only On Submitted Transaction or Revise Transaction")
+	}
+
 	// Add Updated Transaction
 	entity_transaction.SetStatus(114) //Status Revise
 	repo_transaction_err := ut.repoTransaction.Store(ctx, entity_transaction)
@@ -284,12 +294,8 @@ func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entit
 	updated_transaction_id := entity_transaction.GetId()
 
 	// Add Rollback Transaction
-	entity_rollback_transaction, entity_rollback_transaction_err := ut.repoTransaction.GetById(ctx, old_transaction_id)
-	if entity_rollback_transaction_err != nil {
-		return entity_rollback_transaction_err
-	}
 
-	entity_rollback_transaction.SetUpdateTransactionId(0)
+	entity_rollback_transaction.SetUpdateTransactionId(old_transaction_id)
 	entity_rollback_transaction.SetTotalAmount(float64(entity_rollback_transaction.GetTotalAmount() * -1.0))
 	entity_rollback_transaction.SetTotalDiscountAmount(float64(entity_rollback_transaction.GetTotalDiscountAmount() * -1.0))
 	entity_rollback_transaction.SetStatus(115) //Status Rollback

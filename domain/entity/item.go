@@ -14,6 +14,7 @@ type Item struct {
 	price         float64
 	stock         int32
 	status        int16
+	is_service    bool
 	created_at    time.Time
 	updated_at    sql.NullTime
 	deleted_at    sql.NullTime
@@ -27,6 +28,7 @@ type DTOItem struct {
 	Price         float64
 	Stock         int32
 	Status        int16
+	Is_service    bool
 	Created_at    time.Time
 	Updated_at    sql.NullTime
 	Deleted_at    sql.NullTime
@@ -84,6 +86,10 @@ func (i *Item) GetStock() int32 {
 	return i.stock
 }
 
+func (i *Item) GetIsService() bool {
+	return i.is_service
+}
+
 func (i *Item) GetStatus() int16 {
 	return i.status
 }
@@ -124,6 +130,10 @@ func (i *Item) SetPrice(value float64) {
 
 func (i *Item) SetStock(value int32) {
 	i.stock = value
+}
+
+func (i *Item) SetIsService(value bool) {
+	i.is_service = value
 }
 
 func (i *Item) SetStatus(value int16) {

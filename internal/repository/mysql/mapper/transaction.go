@@ -50,11 +50,11 @@ func TransactionEntityToModel(entity_transaction *entity.Transaction) *model.Mod
 	var deleted_at_string string
 
 	if entity_transaction.GetUpdatedAt().Valid == true {
-		updated_at_string = entity_transaction.GetUpdatedAt().Time.String()
+		updated_at_string = entity_transaction.GetUpdatedAt().Time.Format(time.RFC3339)
 	}
 
 	if entity_transaction.GetDeletedAt().Valid == true {
-		deleted_at_string = entity_transaction.GetDeletedAt().Time.String()
+		deleted_at_string = entity_transaction.GetDeletedAt().Time.Format(time.RFC3339)
 	}
 
 	return &model.ModelTransaction{
