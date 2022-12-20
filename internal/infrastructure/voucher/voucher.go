@@ -2,10 +2,12 @@ package infrastructure_voucher
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
-	"salt-final-transaction/domain/entity"
-	infrastructure_voucher_http_response "salt-final-transaction/internal/infrastructure/voucher/http_response"
 	infrastructure_voucher_interface "salt-final-transaction/internal/infrastructure/voucher/interface"
+	"strconv"
+	"time"
 )
 
 type InfrastructureVoucher struct {
@@ -15,12 +17,35 @@ type InfrastructureVoucher struct {
 
 func NewInfrastructureVoucher(http_client_value http.Client, base_endpoint_value string) infrastructure_voucher_interface.InterfaceInfrastructureVoucher {
 	return &InfrastructureVoucher{
-		// base_endpoint: "http://localhost:8080/customer",
+		// base_endpoint: "http://localhost:8080/api/voucher/",
 		http_client:   http_client_value,
 		base_endpoint: base_endpoint_value,
 	}
 }
 
-func (icv *InfrastructureVoucher) GetByCode(ctx context.Context, code string, transaction *entity.Transaction) (customer *infrastructure_voucher_http_response.CustomersVoucher, http_response_code int, err error)
-func (icv *InfrastructureVoucher) SetVoucherIsUsedByCode(ctx context.Context, code string, transaction_id int64) (http_response_code int, err error)
-func (icv *InfrastructureVoucher) GenerateVoucher(ctx context.Context, transaction *entity.Transaction) (http_response_code int, err error)
+func (icv *InfrastructureVoucher) GenerateVoucher(ctx context.Context, customer_id int64) (err error) {
+	_, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	customer_id_string := strconv.Itoa(int(customer_id))
+
+	endpoint := icv.base_endpoint + "/generate/" + customer_id_string
+	fmt.Println("!! Generate Voucher !!")
+	fmt.Println(endpoint)
+
+	request, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return errors.New("500")
+	}
+
+	response, err := icv.http_client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == 404 {
+		return errors.New("404")
+	}
+
+	return nil
+}

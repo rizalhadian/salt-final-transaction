@@ -7,6 +7,7 @@ import (
 	"salt-final-transaction/domain/interface_repo"
 	"salt-final-transaction/domain/interface_usecase"
 	interface_infrastructure_customer "salt-final-transaction/internal/infrastructure/customer/interface"
+	interface_infrastructure_voucher "salt-final-transaction/internal/infrastructure/voucher/interface"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -15,10 +16,12 @@ import (
 )
 
 type UsecaseTransaction struct {
-	infraCustomer        interface_infrastructure_customer.InterfaceInfrastructureCustomer
-	repoTransaction      interface_repo.InterfaceRepoTransaction
-	repoTransactionsItem interface_repo.InterfaceRepoTransactionsItem
-	repoItem             interface_repo.InterfaceRepoItem
+	infraCustomer                 interface_infrastructure_customer.InterfaceInfrastructureCustomer
+	infraVoucher                  interface_infrastructure_voucher.InterfaceInfrastructureVoucher
+	repoTransaction               interface_repo.InterfaceRepoTransaction
+	repoTransactionsItem          interface_repo.InterfaceRepoTransactionsItem
+	repoItem                      interface_repo.InterfaceRepoItem
+	repoCustomersTransactionCount interface_repo.InterfaceRepoCustomersTransactionCount
 }
 
 type TotalAmountPerCategory struct {
@@ -33,12 +36,14 @@ type Transactions_Items_Err struct {
 	err        string
 }
 
-func NewUsecaseTransaction(interfaceInfraCustomer interface_infrastructure_customer.InterfaceInfrastructureCustomer, interfaceRepoTransaction interface_repo.InterfaceRepoTransaction, interfaceRepoTransactionsItem interface_repo.InterfaceRepoTransactionsItem, interfaceRepoItem interface_repo.InterfaceRepoItem) interface_usecase.InterfaceUsecaseTransaction {
+func NewUsecaseTransaction(interfaceInfraCustomer interface_infrastructure_customer.InterfaceInfrastructureCustomer, interfaceInfraVoucher interface_infrastructure_voucher.InterfaceInfrastructureVoucher, interfaceRepoTransaction interface_repo.InterfaceRepoTransaction, interfaceRepoTransactionsItem interface_repo.InterfaceRepoTransactionsItem, interfaceRepoItem interface_repo.InterfaceRepoItem, interfaceCustomersTransactionCount interface_repo.InterfaceRepoCustomersTransactionCount) interface_usecase.InterfaceUsecaseTransaction {
 	return &UsecaseTransaction{
-		infraCustomer:        interfaceInfraCustomer,
-		repoTransaction:      interfaceRepoTransaction,
-		repoTransactionsItem: interfaceRepoTransactionsItem,
-		repoItem:             interfaceRepoItem,
+		infraCustomer:                 interfaceInfraCustomer,
+		infraVoucher:                  interfaceInfraVoucher,
+		repoTransaction:               interfaceRepoTransaction,
+		repoTransactionsItem:          interfaceRepoTransactionsItem,
+		repoItem:                      interfaceRepoItem,
+		repoCustomersTransactionCount: interfaceCustomersTransactionCount,
 	}
 }
 
@@ -161,8 +166,51 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 	if repo_transaction_update_err != nil {
 		return nil, repo_transaction_update_err
 	}
-	// <<<< Repository Store
+	// <<< Repository Store
 
+	// >>> Customers Transaction Count
+	cust_trx_count_existed, cust_trx_count_existed_err := ut.repoCustomersTransactionCount.GetByCustomerId(ctx, entity_transaction.GetCustomerId())
+	if cust_trx_count_existed_err != nil {
+		if cust_trx_count_existed_err.Error() == "404" {
+			entity_cust_trx_count := entity.CustomersTransactionCount{}
+			entity_cust_trx_count.SetFirstTransactionDatetime(entity_transaction.GetCreatedAt())
+			entity_cust_trx_count.SetLastTransactionDatetime(entity_transaction.GetCreatedAt())
+			entity_cust_trx_count.SetTotalTransactionSpend(entity_transaction.GetFinalTotalAmount())
+			entity_cust_trx_count.SetTransactionCount(1)
+			entity_cust_trx_count_store_err := ut.repoCustomersTransactionCount.Store(ctx, &entity_cust_trx_count)
+			if entity_cust_trx_count_store_err != nil {
+				log.Error().Msg(entity_cust_trx_count_store_err.Error())
+				return nil, errors.New("500")
+			}
+		}
+	} else {
+		last_total_trx_spend := cust_trx_count_existed.GetTotalTransactionSpend()
+		last_trx_count := cust_trx_count_existed.GetTransactionCount()
+
+		cust_trx_count_existed.SetLastTransactionDatetime(entity_transaction.GetCreatedAt())
+		cust_trx_count_existed.SetTotalTransactionSpend(last_total_trx_spend + entity_transaction.GetFinalTotalAmount())
+		cust_trx_count_existed.SetTransactionCount(last_trx_count + 1)
+
+		entity_cust_trx_count_update_err := ut.repoCustomersTransactionCount.Update(ctx, cust_trx_count_existed)
+		if entity_cust_trx_count_update_err != nil {
+			log.Error().Msg(entity_cust_trx_count_update_err.Error())
+			return nil, errors.New("500")
+		}
+
+	}
+	// <<< Customers Transaction Count
+
+	generate_voucher_err := ut.infraVoucher.GenerateVoucher(ctx, entity_transaction.GetCustomerId())
+	if generate_voucher_err != nil {
+		log.Error().Msg("!!! Generate Voucher Failed !!!")
+		log.Error().Msg(generate_voucher_err.Error())
+	} else {
+		entity_transaction.SetIsGeneratedVoucherSucceed(true)
+		repo_transaction_update_generate_voucher_err := ut.repoTransaction.Update(ctx, entity_transaction)
+		if repo_transaction_update_generate_voucher_err != nil {
+			return nil, repo_transaction_update_generate_voucher_err
+		}
+	}
 	return entity_transaction, nil
 }
 
@@ -228,26 +276,6 @@ func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entit
 		// <<< Check Repo Item
 		total_items_amount += entity_transactions_item.GetTotalPrice()
 		entity_transactions_items = append(entity_transactions_items, entity_transactions_item)
-
-		// >>> Count Total Amount per Category | Move this to infrastructure voucher
-		// if index == 0 {
-		// 	total_amount_per_category = append(total_amount_per_category, TotalAmountPerCategory{
-		// 		items_type_id: dto_transactions_item.Item_id,
-		// 		total_amount:  dto_transactions_item.Total_price,
-		// 	})
-		// } else {
-		// 	for _, total_amount_per_category_item := range total_amount_per_category {
-		// 		if total_amount_per_category_item.items_type_id == dto_transactions_item.Item_id {
-		// 			total_amount_per_category_item.total_amount += dto_transactions_item.Total_price
-		// 		} else {
-		// 			total_amount_per_category = append(total_amount_per_category, TotalAmountPerCategory{
-		// 				items_type_id: dto_transactions_item.Item_id,
-		// 				total_amount:  dto_transactions_item.Total_price,
-		// 			})
-		// 		}
-		// 	}
-		// }
-		// <<< Count Total Amount per Category
 	}
 	// <<< Check Transaction's Item
 
@@ -294,7 +322,6 @@ func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entit
 	updated_transaction_id := entity_transaction.GetId()
 
 	// Add Rollback Transaction
-
 	entity_rollback_transaction.SetUpdateTransactionId(old_transaction_id)
 	entity_rollback_transaction.SetTotalAmount(float64(entity_rollback_transaction.GetTotalAmount() * -1.0))
 	entity_rollback_transaction.SetTotalDiscountAmount(float64(entity_rollback_transaction.GetTotalDiscountAmount() * -1.0))
@@ -320,6 +347,24 @@ func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entit
 		return repo_old_transaction_update_err
 	}
 	// <<<< Repository Store
+
+	// >>> Customers Transaction Count
+	cust_trx_count_existed, cust_trx_count_existed_err := ut.repoCustomersTransactionCount.GetByCustomerId(ctx, entity_rollback_transaction.GetCustomerId())
+	if cust_trx_count_existed_err != nil {
+		log.Error().Msg("Update Transaction But Customers Transaction Count Is Null | Need To count all transaction")
+	} else {
+		last_total_trx_spend := cust_trx_count_existed.GetTotalTransactionSpend()
+		cust_trx_count_existed.SetLastTransactionDatetime(entity_rollback_transaction.GetCreatedAt())
+		cust_trx_count_existed.SetTotalTransactionSpend(last_total_trx_spend + (entity_old_transaction.GetFinalTotalAmount() * -1.0) + entity_transaction.GetFinalTotalAmount())
+
+		entity_cust_trx_count_update_err := ut.repoCustomersTransactionCount.Update(ctx, cust_trx_count_existed)
+		if entity_cust_trx_count_update_err != nil {
+			log.Error().Msg(entity_cust_trx_count_update_err.Error())
+			return errors.New("500")
+		}
+
+	}
+	// <<< Customers Transaction Count
 
 	return nil
 }
@@ -376,6 +421,27 @@ func (ut *UsecaseTransaction) Delete(ctx context.Context, customer_id int64, id 
 		return repo_old_transaction_update_err
 	}
 	// <<<< Repository Store
+
+	// >>> Customers Transaction Count
+	cust_trx_count_existed, cust_trx_count_existed_err := ut.repoCustomersTransactionCount.GetByCustomerId(ctx, entity_rollback_transaction.GetCustomerId())
+	if cust_trx_count_existed_err != nil {
+		log.Error().Msg("Delete Transaction But Customers Transaction Count Is Null | Need To count all transaction")
+	} else {
+		last_total_trx_spend := cust_trx_count_existed.GetTotalTransactionSpend()
+		last_trx_count := cust_trx_count_existed.GetTransactionCount()
+
+		cust_trx_count_existed.SetLastTransactionDatetime(entity_rollback_transaction.GetCreatedAt())
+		cust_trx_count_existed.SetTotalTransactionSpend(last_total_trx_spend + entity_rollback_transaction.GetFinalTotalAmount())
+		cust_trx_count_existed.SetTransactionCount(last_trx_count - 1)
+
+		entity_cust_trx_count_update_err := ut.repoCustomersTransactionCount.Update(ctx, cust_trx_count_existed)
+		if entity_cust_trx_count_update_err != nil {
+			log.Error().Msg(entity_cust_trx_count_update_err.Error())
+			return errors.New("500")
+		}
+
+	}
+	// <<< Customers Transaction Count
 
 	return nil
 }

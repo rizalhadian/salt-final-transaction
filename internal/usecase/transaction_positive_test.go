@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"salt-final-transaction/domain/entity"
 	infrastructure_customer "salt-final-transaction/internal/infrastructure/customer"
+	infrastructure_voucher "salt-final-transaction/internal/infrastructure/voucher"
 	repository_mysql "salt-final-transaction/internal/repository/mysql"
 	usecase "salt-final-transaction/internal/usecase"
 	pkg_database_mysql "salt-final-transaction/pkg/database/mysql"
@@ -20,19 +21,22 @@ type UsecaseTransactionPositiveTest struct {
 	expected_err    error
 }
 
-func Test_Transaction_Store_Positive(t *testing.T) {
-	var (
-		ctx             = context.Background()
-		connectionMysql = pkg_database_mysql.InitDBMysql()
-		http_client     = http.Client{}
-		// ============ Infrastructure
-		infrastrctureCustomer = infrastructure_customer.NewInfrastructureCustomer(http_client, "http://localhost:8080/customer")
-		repoTransaction       = repository_mysql.NewRepoTransaction(connectionMysql)
-		repoTransactionsItem  = repository_mysql.NewRepoTransactionsItem(connectionMysql)
-		repoItem              = repository_mysql.NewRepoItem(connectionMysql)
+var (
+	ctx             = context.Background()
+	connectionMysql = pkg_database_mysql.InitDBMysql()
+	http_client     = http.Client{}
+	// ============ Infrastructure
+	infrastrctureCustomer = infrastructure_customer.NewInfrastructureCustomer(http_client, "http://localhost:8080/api/customer")
+	infrastrctureVoucher  = infrastructure_voucher.NewInfrastructureVoucher(http_client, "http://localhost:8080/api/voucher")
+	repoTransaction       = repository_mysql.NewRepoTransaction(connectionMysql)
+	repoTransactionsItem  = repository_mysql.NewRepoTransactionsItem(connectionMysql)
+	repoItem              = repository_mysql.NewRepoItem(connectionMysql)
 
-		usecaseTransaction = usecase.NewUsecaseTransaction(infrastrctureCustomer, repoTransaction, repoTransactionsItem, repoItem)
-	)
+	repoCustomersTransactionCount = repository_mysql.NewRepoCustomersTransactionCount(connectionMysql)
+	usecaseTransaction            = usecase.NewUsecaseTransaction(infrastrctureCustomer, infrastrctureVoucher, repoTransaction, repoTransactionsItem, repoItem, repoCustomersTransactionCount)
+)
+
+func Test_Transaction_Store_Positive(t *testing.T) {
 
 	dto_transaction := &entity.DTOTransaction{
 		Customer_id: 0,
@@ -66,21 +70,6 @@ func Test_Transaction_Store_Positive(t *testing.T) {
 }
 
 func Test_Transaction_Update_Positive(t *testing.T) {
-
-	//asd
-
-	var (
-		ctx             = context.Background()
-		connectionMysql = pkg_database_mysql.InitDBMysql()
-		http_client     = http.Client{}
-		// ============ Infrastructure
-		infrastrctureCustomer = infrastructure_customer.NewInfrastructureCustomer(http_client, "http://localhost:8080/customer")
-		repoTransaction       = repository_mysql.NewRepoTransaction(connectionMysql)
-		repoTransactionsItem  = repository_mysql.NewRepoTransactionsItem(connectionMysql)
-		repoItem              = repository_mysql.NewRepoItem(connectionMysql)
-
-		usecaseTransaction = usecase.NewUsecaseTransaction(infrastrctureCustomer, repoTransaction, repoTransactionsItem, repoItem)
-	)
 
 	dto_transaction := &entity.DTOTransaction{
 		Id:          1,
@@ -121,55 +110,18 @@ func Test_Transaction_Update_Positive(t *testing.T) {
 }
 
 func Test_Transaction_Delete_Positive(t *testing.T) {
-	var (
-		ctx             = context.Background()
-		connectionMysql = pkg_database_mysql.InitDBMysql()
-		http_client     = http.Client{}
-		// ============ Infrastructure
-		infrastrctureCustomer = infrastructure_customer.NewInfrastructureCustomer(http_client, "http://localhost:8080/customer")
-		repoTransaction       = repository_mysql.NewRepoTransaction(connectionMysql)
-		repoTransactionsItem  = repository_mysql.NewRepoTransactionsItem(connectionMysql)
-		repoItem              = repository_mysql.NewRepoItem(connectionMysql)
-
-		usecaseTransaction = usecase.NewUsecaseTransaction(infrastrctureCustomer, repoTransaction, repoTransactionsItem, repoItem)
-	)
 
 	usecase_transaction_delete_err := usecaseTransaction.Delete(ctx, 0, 4)
 	assert.Nil(t, usecase_transaction_delete_err)
 }
 
 func Test_Transaction_GetById_Positive(t *testing.T) {
-	var (
-		ctx             = context.Background()
-		connectionMysql = pkg_database_mysql.InitDBMysql()
-		http_client     = http.Client{}
-		// ============ Infrastructure
-		infrastrctureCustomer = infrastructure_customer.NewInfrastructureCustomer(http_client, "http://localhost:8080/customer")
-		repoTransaction       = repository_mysql.NewRepoTransaction(connectionMysql)
-		repoTransactionsItem  = repository_mysql.NewRepoTransactionsItem(connectionMysql)
-		repoItem              = repository_mysql.NewRepoItem(connectionMysql)
-
-		usecaseTransaction = usecase.NewUsecaseTransaction(infrastrctureCustomer, repoTransaction, repoTransactionsItem, repoItem)
-	)
-
 	usecase_transaction_get, usecase_transaction_get_err := usecaseTransaction.GetById(ctx, 0, 4)
 	assert.NotNil(t, usecase_transaction_get)
 	assert.Nil(t, usecase_transaction_get_err)
 }
 
 func Test_Transaction_GetByCustomerIdList_Positive(t *testing.T) {
-	var (
-		ctx             = context.Background()
-		connectionMysql = pkg_database_mysql.InitDBMysql()
-		http_client     = http.Client{}
-		// ============ Infrastructure
-		infrastrctureCustomer = infrastructure_customer.NewInfrastructureCustomer(http_client, "http://localhost:8080/customer")
-		repoTransaction       = repository_mysql.NewRepoTransaction(connectionMysql)
-		repoTransactionsItem  = repository_mysql.NewRepoTransactionsItem(connectionMysql)
-		repoItem              = repository_mysql.NewRepoItem(connectionMysql)
-
-		usecaseTransaction = usecase.NewUsecaseTransaction(infrastrctureCustomer, repoTransaction, repoTransactionsItem, repoItem)
-	)
 
 	usecase_transactions_get, usecase_transactions_get_err := usecaseTransaction.GetByCustomerIdList(ctx, 0, 1)
 	assert.NotNil(t, usecase_transactions_get)
@@ -177,18 +129,6 @@ func Test_Transaction_GetByCustomerIdList_Positive(t *testing.T) {
 }
 
 func Test_Transaction_GetList_Positive(t *testing.T) {
-	var (
-		ctx             = context.Background()
-		connectionMysql = pkg_database_mysql.InitDBMysql()
-		http_client     = http.Client{}
-		// ============ Infrastructure
-		infrastrctureCustomer = infrastructure_customer.NewInfrastructureCustomer(http_client, "http://localhost:8080/customer")
-		repoTransaction       = repository_mysql.NewRepoTransaction(connectionMysql)
-		repoTransactionsItem  = repository_mysql.NewRepoTransactionsItem(connectionMysql)
-		repoItem              = repository_mysql.NewRepoItem(connectionMysql)
-
-		usecaseTransaction = usecase.NewUsecaseTransaction(infrastrctureCustomer, repoTransaction, repoTransactionsItem, repoItem)
-	)
 
 	usecase_transactions_get, usecase_transactions_get_err := usecaseTransaction.GetList(ctx, 2)
 	assert.NotNil(t, usecase_transactions_get)

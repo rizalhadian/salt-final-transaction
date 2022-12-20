@@ -1,14 +1,9 @@
 package http_request
 
-import (
-	"time"
-)
-
 type Transaction struct {
 	Customer_id       int                `json:"customer_id,omitempty"`
 	Note              string             `json:"note,omitempty"`
 	Status            string             `json:"status,omitempty"`
-	TesDate           time.Time          `json:"date,omitempty"`
 	TransactionsItems []TransactionsItem `json:"items,omitempty"`
 }
 

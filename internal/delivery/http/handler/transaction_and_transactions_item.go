@@ -31,7 +31,6 @@ func NewHandlerTransaction(router *mux.Router, usecase_transaction_value interfa
 	router.HandleFunc("/api/customer/{customer_id}/transaction/{id}", HandlerTrans.Delete).Methods(http.MethodDelete)
 
 	router.HandleFunc("/api/transaction", HandlerTrans.GetList).Methods(http.MethodGet)
-
 }
 
 func (ht *HandlerTransaction) GetListByCustomer(w http.ResponseWriter, r *http.Request) {

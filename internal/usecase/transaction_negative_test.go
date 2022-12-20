@@ -1,14 +1,8 @@
 package usecase_test
 
 import (
-	"context"
 	"errors"
-	"net/http"
 	"salt-final-transaction/domain/entity"
-	infrastructure_customer "salt-final-transaction/internal/infrastructure/customer"
-	repository_mysql "salt-final-transaction/internal/repository/mysql"
-	usecase "salt-final-transaction/internal/usecase"
-	pkg_database_mysql "salt-final-transaction/pkg/database/mysql"
 	"testing"
 	"time"
 
@@ -170,19 +164,6 @@ func Test_Transaction_Store_Negative(t *testing.T) {
 		// 	expected_err:            errors.New("404"),
 		// },
 	}
-
-	var (
-		ctx             = context.Background()
-		connectionMysql = pkg_database_mysql.InitDBMysql()
-		http_client     = http.Client{}
-		// ============ Infrastructure
-		infrastrctureCustomer = infrastructure_customer.NewInfrastructureCustomer(http_client, "http://localhost:8080/customer")
-		repoTransaction       = repository_mysql.NewRepoTransaction(connectionMysql)
-		repoTransactionsItem  = repository_mysql.NewRepoTransactionsItem(connectionMysql)
-		repoItem              = repository_mysql.NewRepoItem(connectionMysql)
-
-		usecaseTransaction = usecase.NewUsecaseTransaction(infrastrctureCustomer, repoTransaction, repoTransactionsItem, repoItem)
-	)
 
 	for _, usecase_transaction_negative_test_data := range usecase_transaction_negative_test_datas {
 		transaction_id, usecase_transaction_store_err := usecaseTransaction.Store(ctx, &usecase_transaction_negative_test_data.dto_transaction)
