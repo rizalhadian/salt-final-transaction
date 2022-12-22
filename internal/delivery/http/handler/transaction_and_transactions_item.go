@@ -139,6 +139,15 @@ func (ht *HandlerTransaction) GetList(w http.ResponseWriter, r *http.Request) {
 func (ht *HandlerTransaction) Store(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("======| Request | URI : " + r.RequestURI + " | Method : " + r.Method + " |======")
 
+	var (
+		req     http_request.Transaction
+		decoder = json.NewDecoder(r.Body)
+		ctx_req = r.Context()
+	)
+
+	ctx_handler, cancel := context.WithTimeout(ctx_req, 60*time.Second)
+	defer cancel()
+
 	customer_id_string := mux.Vars(r)["customer_id"]
 	customer_id, customer_id_conv_err := strconv.Atoi(customer_id_string)
 
@@ -146,15 +155,8 @@ func (ht *HandlerTransaction) Store(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	var (
-		req     http_request.Transaction
-		decoder = json.NewDecoder(r.Body)
-		ctx_req = r.Context()
-	)
-	req.Customer_id = customer_id
 
-	ctx_handler, cancel := context.WithTimeout(ctx_req, 60*time.Second)
-	defer cancel()
+	req.Customer_id = customer_id
 
 	errDecode := decoder.Decode(&req)
 	if errDecode != nil {
@@ -177,10 +179,19 @@ func (ht *HandlerTransaction) Store(w http.ResponseWriter, r *http.Request) {
 		dto_transactions_items = append(dto_transactions_items, &dto_transactions_item)
 	}
 
-	dto_transaction := &entity.DTOTransaction{
-		Customer_id: int64(req.Customer_id),
+	var dto_transactions_vouchers []*entity.DTOCustomersVoucher
+	for _, transaction_voucher := range req.TransactionsVouchers {
+		dto_transactions_voucher := entity.DTOCustomersVoucher{
+			Code: transaction_voucher.Code,
+		}
 
-		Items: dto_transactions_items,
+		dto_transactions_vouchers = append(dto_transactions_vouchers, &dto_transactions_voucher)
+	}
+
+	dto_transaction := &entity.DTOTransaction{
+		Customer_id:       int64(req.Customer_id),
+		Items:             dto_transactions_items,
+		Vouchers_redeemed: dto_transactions_vouchers,
 	}
 
 	entity_transaction, usecase_store_err := ht.usecase_transaction.Store(ctx_handler, dto_transaction)
@@ -194,6 +205,18 @@ func (ht *HandlerTransaction) Store(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if usecase_store_err.Error() == "500" {
 			w.WriteHeader(http.StatusInternalServerError)
+			return
+		} else if usecase_store_err.Error() == "Voucher Not Found" {
+			w.WriteHeader(http.StatusBadRequest)
+			response_skeleton_error := http_response.SkeletonError{
+				Success: false,
+				Message: "Available Voucher Not Found ",
+			}
+			resp, resp_json_err := json.Marshal(response_skeleton_error)
+			if resp_json_err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			w.Write(resp)
 			return
 		} else {
 			w.WriteHeader(http.StatusBadRequest)

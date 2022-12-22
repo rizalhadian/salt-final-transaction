@@ -70,6 +70,7 @@ type Transaction struct {
 	rollback_transaction_id      int64
 	update_transaction_id        int64
 	items                        []*TransactionsItem
+	vouchers_redeemed            []*CustomersVoucher
 	created_at                   time.Time
 	updated_at                   sql.NullTime
 	deleted_at                   sql.NullTime
@@ -87,6 +88,7 @@ type DTOTransaction struct {
 	Rollback_transaction_id      int64
 	Update_transaction_id        int64
 	Items                        []*DTOTransactionsItem
+	Vouchers_redeemed            []*DTOCustomersVoucher
 	Created_at                   time.Time
 	Updated_at                   sql.NullTime
 	Deleted_at                   sql.NullTime
@@ -221,6 +223,10 @@ func (t *Transaction) GetItems() []*TransactionsItem {
 	return t.items
 }
 
+func (t *Transaction) GetVouchersRedeemd() []*CustomersVoucher {
+	return t.vouchers_redeemed
+}
+
 func (t *Transaction) GetCreatedAt() time.Time {
 	return t.created_at
 }
@@ -283,6 +289,10 @@ func (t *Transaction) SetItems(values []*TransactionsItem) {
 	// }
 	// t.total_amount = total_amount
 	t.items = values
+}
+
+func (t *Transaction) SetVouchersRedeemd(values []*CustomersVoucher) {
+	t.vouchers_redeemed = values
 }
 
 func (t *Transaction) SetCreatedAt(value time.Time) {

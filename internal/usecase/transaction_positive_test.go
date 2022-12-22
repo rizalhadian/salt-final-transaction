@@ -111,12 +111,12 @@ func Test_Transaction_Update_Positive(t *testing.T) {
 
 func Test_Transaction_Delete_Positive(t *testing.T) {
 
-	usecase_transaction_delete_err := usecaseTransaction.Delete(ctx, 0, 4)
+	usecase_transaction_delete_err := usecaseTransaction.Delete(ctx, 0, 2)
 	assert.Nil(t, usecase_transaction_delete_err)
 }
 
 func Test_Transaction_GetById_Positive(t *testing.T) {
-	usecase_transaction_get, usecase_transaction_get_err := usecaseTransaction.GetById(ctx, 0, 4)
+	usecase_transaction_get, usecase_transaction_get_err := usecaseTransaction.GetById(ctx, 0, 1)
 	assert.NotNil(t, usecase_transaction_get)
 	assert.Nil(t, usecase_transaction_get_err)
 }

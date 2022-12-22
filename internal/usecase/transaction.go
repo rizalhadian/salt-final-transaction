@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"salt-final-transaction/domain/entity"
 	"salt-final-transaction/domain/interface_repo"
 	"salt-final-transaction/domain/interface_usecase"
@@ -113,31 +114,8 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 		total_items_amount += entity_transactions_item.GetTotalPrice()
 		entity_transactions_items = append(entity_transactions_items, entity_transactions_item)
 
-		// >>> Count Total Amount per Category | Move this to infrastructure voucher
-		// if index == 0 {
-		// 	total_amount_per_category = append(total_amount_per_category, TotalAmountPerCategory{
-		// 		items_type_id: dto_transactions_item.Item_id,
-		// 		total_amount:  dto_transactions_item.Total_price,
-		// 	})
-		// } else {
-		// 	for _, total_amount_per_category_item := range total_amount_per_category {
-		// 		if total_amount_per_category_item.items_type_id == dto_transactions_item.Item_id {
-		// 			total_amount_per_category_item.total_amount += dto_transactions_item.Total_price
-		// 		} else {
-		// 			total_amount_per_category = append(total_amount_per_category, TotalAmountPerCategory{
-		// 				items_type_id: dto_transactions_item.Item_id,
-		// 				total_amount:  dto_transactions_item.Total_price,
-		// 			})
-		// 		}
-		// 	}
-		// }
-		// <<< Count Total Amount per Category
 	}
 	// <<< Check Transaction's Item
-
-	// >>> Infrastructure Check & Count Voucher Discount
-	// Code is here
-	// <<< Infrastructure Check & Count Voucher
 
 	dto_transaction.Is_generated_voucher_succeed = false
 
@@ -158,14 +136,53 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 		return nil, repo_transactions_items_err
 	}
 
-	entity_transaction.SetStatus(111)
-	entity_transaction.SetTotalAmount(total_items_amount)
-	entity_transaction.SetItems(entity_transactions_items)
-	entity_transaction.SetTotalDiscountAmount(0)
-	repo_transaction_update_err := ut.repoTransaction.Update(ctx, entity_transaction)
-	if repo_transaction_update_err != nil {
-		return nil, repo_transaction_update_err
+	// >>> Infrastructure Check & Count Voucher Discount
+	if len(dto_transaction.Vouchers_redeemed) > 0 {
+		entity_transaction.SetTotalAmount(total_items_amount)
+		entity_transaction.SetItems(entity_transactions_items)
+
+		fmt.Println("Ada Voucher")
+		var vouchers_codes []string
+		for _, entity_transactions_voucher := range dto_transaction.Vouchers_redeemed {
+			vouchers_code := entity_transactions_voucher.Code
+			vouchers_codes = append(vouchers_codes, vouchers_code)
+		}
+		redeem_vouchers, redeem_voucher_err := ut.infraVoucher.Redeem(ctx, entity_transaction, vouchers_codes)
+		if redeem_voucher_err != nil {
+			if redeem_voucher_err.Error() == "404" {
+				return nil, errors.New("Voucher Not Found")
+			} else {
+				return nil, redeem_voucher_err
+			}
+		} else {
+			fmt.Println("Redeem Voucher Succeed")
+
+			total_dicount_amount_all_vouchers := 0.00
+			for _, redeem_voucher := range redeem_vouchers {
+				total_dicount_amount_all_vouchers += redeem_voucher.Total_discount_amount
+			}
+			entity_transaction.SetStatus(111)
+			entity_transaction.SetTotalDiscountAmount(total_dicount_amount_all_vouchers)
+			repo_transaction_update_err := ut.repoTransaction.Update(ctx, entity_transaction)
+			if repo_transaction_update_err != nil {
+				return nil, repo_transaction_update_err
+			}
+		}
 	}
+
+	if len(dto_transaction.Vouchers_redeemed) == 0 {
+		// Kalau tidak ada voucher langsung ubah status jadi 111 (submitted) dan set total discount amount 0
+		entity_transaction.SetStatus(111)
+		entity_transaction.SetTotalAmount(total_items_amount)
+		entity_transaction.SetItems(entity_transactions_items)
+		entity_transaction.SetTotalDiscountAmount(0)
+		repo_transaction_update_err := ut.repoTransaction.Update(ctx, entity_transaction)
+		if repo_transaction_update_err != nil {
+			return nil, repo_transaction_update_err
+		}
+	}
+	// >>> Infrastructure Check & Count Voucher Discount
+
 	// <<< Repository Store
 
 	// >>> Customers Transaction Count
@@ -279,7 +296,6 @@ func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entit
 	}
 	// <<< Check Transaction's Item
 
-	// >>> Infrastructure Check & Count Voucher Discount
 	// Code is here
 	// <<< Infrastructure Check & Count Voucher
 
