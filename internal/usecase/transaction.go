@@ -216,7 +216,7 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 
 	}
 	// <<< Customers Transaction Count
-
+	// if dto_transaction.Customer_id > 0 {
 	generate_voucher_err := ut.infraVoucher.GenerateVoucher(ctx, entity_transaction.GetCustomerId())
 	if generate_voucher_err != nil {
 		log.Error().Msg("!!! Generate Voucher Failed !!!")
@@ -229,6 +229,8 @@ func (ut *UsecaseTransaction) Store(ctx context.Context, dto_transaction *entity
 		}
 	}
 	return entity_transaction, nil
+	// }
+
 }
 
 func (ut *UsecaseTransaction) Update(ctx context.Context, dto_transaction *entity.DTOTransaction) error {
@@ -503,7 +505,7 @@ func (ut *UsecaseTransaction) GetByCustomerIdList(ctx context.Context, customer_
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	// var errs error
-	item_per_page := int32(10)
+	item_per_page := int32(2)
 	limit := item_per_page
 	offset := (page * item_per_page) - item_per_page
 
@@ -542,7 +544,7 @@ func (ut *UsecaseTransaction) GetList(ctx context.Context, page int32) (res []*e
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	// var errs error
-	item_per_page := int32(10)
+	item_per_page := int32(2)
 	limit := item_per_page
 	offset := (page * item_per_page) - item_per_page
 

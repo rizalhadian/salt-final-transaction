@@ -373,5 +373,28 @@ func (ht *HandlerTransaction) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ht *HandlerTransaction) Delete(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("======| Request | URI : " + r.RequestURI + " | Method : " + r.Method + " |======")
 
+	transaction_id_string := mux.Vars(r)["id"]
+	customer_id_string := mux.Vars(r)["customer_id"]
+
+	transaction_id, transaction_id_conv_err := strconv.Atoi(transaction_id_string)
+	customer_id, customer_id_conv_err := strconv.Atoi(customer_id_string)
+
+	if transaction_id_conv_err != nil || customer_id_conv_err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	delete_err := ht.usecase_transaction.Delete(r.Context(), int64(customer_id), int64(transaction_id))
+	if delete_err != nil {
+		if delete_err.Error() == "404" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+	}
 }
